@@ -8,6 +8,8 @@ def calorieCounting(inputPath: String): Unit =
       val (prefix, suffix) = lines.span(!_.isEmpty)
       prefix.map(_.toInt).sum :: sums(suffix.dropWhile(_.isEmpty))
 
-  println(sums(lines).max)
+  val sortedSums = sums(lines).sortWith(_ > _)
+  println(sortedSums(0))
+  println(sortedSums.take(3).sum)
 
 calorieCounting(args(0))
