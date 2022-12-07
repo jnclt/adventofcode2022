@@ -29,9 +29,10 @@ input.next
 process(input, ArrayBuffer(root))
 
 def sizes(dir: Node): List[Int] =
-  val subdirSizes = dir.children.filter(!_.weight.isDefined).flatMap(sizes).toList
+  val subdirSizes = dir.children.filter(!_.weight.isDefined).map(sizes).toList
   val fileSizes = dir.children.filter(_.weight.isDefined).map(_.weight.get).toList
-  (subdirSizes.sum + fileSizes.sum) :: subdirSizes
+  (subdirSizes.map(_.head).sum + fileSizes.sum) :: subdirSizes.flatten
 
 val dirSizes = sizes(root)
 println(dirSizes.filter(_ <= 100000).sum)
+println(dirSizes.filter(_ > (30000000 - (70000000 - dirSizes.head))).min)
