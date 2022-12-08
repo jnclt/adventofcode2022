@@ -15,14 +15,11 @@ def process(input: Iterator[String], cwd: ArrayBuffer[Node]): Node =
       cwd.prepend(node)
       process(input, cwd)
     case Some(file(weight, name)) =>
-      val node = Node(name, Some(weight.toInt), ArrayBuffer())
-      cwd.head.children.prepend(node)
+      cwd.head.children.prepend(Node(name, Some(weight.toInt), ArrayBuffer()))
       process(input, cwd)
-    case Some(up()) =>
-      process(input, cwd.tail)
-    case Some(_) => process(input, cwd)
-    case None =>
-      cwd.last
+    case Some(up()) => process(input, cwd.tail)
+    case Some(_)    => process(input, cwd)
+    case None       => cwd.last
 
 val root = Node("/", None, ArrayBuffer())
 input.next
