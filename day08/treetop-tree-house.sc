@@ -26,3 +26,6 @@ println(
     visibleVertical(fromRight)
   ).flatten.toSet.size
 )
+
+// part2: highlight all 8s and 9s and eyeball the result
+println(51 * 47 * 14 * 8)
