@@ -32,3 +32,12 @@ def step(toVisit: List[(Int, Int)], costs: Map[(Int, Int), Int]): Map[(Int, Int)
 
 val costs = step(List((startX, startY)), Map((startX, startY) -> 0))
 println(costs((endX, endY)))
+
+val starts = for
+  x <- 0 to elevations.head.size - 1
+  y <- 0 to elevations.size - 1
+  if elevations(y)(x) == 'a'
+yield (x, y)
+
+val costsA = step(starts.toList, starts.map(_ -> 0).toMap)
+println(costsA((endX, endY)))
