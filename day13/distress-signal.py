@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import sys
-from itertools import zip_longest
 from typing import Tuple
 
 def main(input_path: str):
@@ -16,11 +15,13 @@ def is_ordered(l:list|int, r:list|int ) -> bool|None:
     case (int(), int()) if l == r: return None
     case (int(), int()) if l != r: return l < r
     case (list(), list()):
-        lists = zip_longest(l, r, fillvalue=-1)
+        lists = zip(l, r)
         for (ll, rr) in lists:
             order = is_ordered(ll, rr)
             if order is not None:
                 return order
+        if len(l) != len(r):
+            return len(l) < len(r)
         return None
     case (int(), list()): return is_ordered([l], r)
     case (list(), int()): return is_ordered(l, [r])
