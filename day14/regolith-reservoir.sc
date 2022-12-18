@@ -16,21 +16,23 @@ def polylineToPoints(corners: Array[(Int, Int)]): Set[(Int, Int)] =
 
 val rocks = lines.flatMap(polylineToPoints).toSet
 val start = (500, 0)
-val bottom = rocks.map(_._2).max
+val subBottom = rocks.map(_._2).max + 1
 
-def fall(pos: (Int, Int), surface: Set[(Int, Int)]): Option[(Int, Int)] =
-  if pos._2 > bottom then None // abyss
+def fall(pos: (Int, Int), surface: Set[(Int, Int)]): (Int, Int) =
+  if pos._2 == subBottom then pos // abyss/floor
   else if surface.contains(pos._1, pos._2 + 1) then
     if !surface.contains(pos._1 - 1, pos._2 + 1) then
       fall((pos._1 - 1, pos._2 + 1), surface) // left
     else if !surface.contains(pos._1 + 1, pos._2 + 1) then
       fall((pos._1 + 1, pos._2 + 1), surface) // right
-    else Some(pos) // stay
+    else pos // stay
   else fall((pos._1, pos._2 + 1), surface) // down
 
-def pour(sand: Set[(Int, Int)]): Set[(Int, Int)] =
+def pour(sand: Set[(Int, Int)], floor: Boolean): Set[(Int, Int)] =
   fall(start, rocks ++ sand) match
-    case None           => sand
-    case Some(sandcorn) => pour(sand + sandcorn)
+    case (500, 0)                 => sand + ((500, 0))
+    case (x, y) if y == subBottom => if floor then pour(sand + ((x, y)), floor) else sand
+    case sandcorn                 => pour(sand + sandcorn, floor)
 
-println(pour(Set[(Int, Int)]()).size)
+println(pour(Set[(Int, Int)](), false).size)
+println(pour(Set[(Int, Int)](), true).size)
