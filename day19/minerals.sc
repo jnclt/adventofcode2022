@@ -39,10 +39,13 @@ def parseBlueprint(line: String): Blueprint =
         Minerals(geodeOre.toInt, 0, geodeObsidian.toInt, 0)
       )
 
-def geodesMaxCount(steps: Int, supplies: Minerals, robots: Minerals)(bp: Blueprint): Int =
-  if steps == 0 then supplies.geodes
+// return supplies + robots => only need to go down 6 more steps from there
+def geodesMaxCount(steps: Int, supplies: Minerals, robots: Minerals)(
+    bp: Blueprint
+): (Minerals, Minerals) =
+  if steps == 0 then (supplies, robots)
   else
-    val counts = ArrayBuffer.empty[Int]
+    val counts = ArrayBuffer.empty[(Minerals, Minerals)]
     val nextSupplies = supplies.increment(robots)
     if supplies.ore >= bp.geodeR.ore && supplies.obsidian >= bp.geodeR.obsidian then
       counts.addOne(
@@ -77,20 +80,32 @@ def geodesMaxCount(steps: Int, supplies: Minerals, robots: Minerals)(bp: Bluepri
         )(bp)
       )
     counts.addOne(geodesMaxCount(steps - 1, nextSupplies, robots)(bp))
-    counts.max
+    counts.maxBy((supplies, robots) => robots.geodes)
 
-def geodes(bp: Blueprint): Int =
-  val steps = 24
-  val supplies = Minerals(0, 0, 0, 0)
-  val robots = Minerals(1, 0, 0, 0)
+def geodes(steps: Int, supplies: Minerals, robots: Minerals)(bp: Blueprint): (Minerals, Minerals) =
   println(s"${Calendar.getInstance().getTime()}: starting Blueprint: $bp")
   val count = geodesMaxCount(steps, supplies, robots)(bp)
   println(s"${Calendar.getInstance().getTime()}: count: $count, Blueprint: $bp")
   return count
 
-val blueprints = io.Source.fromFile("input.txt").getLines.map(parseBlueprint).toList.par
-val geodeCounts = blueprints.map(geodes) // 37min with 10 threads
-println(geodeCounts)
-val qualities = geodeCounts.zipWithIndex.map(p => p._1 * (p._2 + 1))
-println(qualities)
-println(qualities.sum)
+val blueprints = io.Source.fromFile("input.txt").getLines.map(parseBlueprint).toList
+
+// part1
+val endStates = blueprints.par.map(
+  geodes(24, Minerals(0, 0, 0, 0), Minerals(1, 0, 0, 0))
+) // 37min with 10 threads
+val geodeCounts = endStates.map(_._1.geodes)
+println(geodeCounts.zipWithIndex.map(p => p._1 * (p._2 + 1)).sum)
+
+// part2
+// not-reliable, 32 steps takes too long => split into 2 phases and hope the optimal solution comes out
+val endStatesPhase1 = blueprints
+  .take(3)
+  .par
+  .map(
+    // 25 turns out to produce a state from which the optimum can be reached
+    geodes(25, Minerals(0, 0, 0, 0), Minerals(1, 0, 0, 0))
+  ) // 36min with 3 threads
+
+val endStatesPahse2 = blueprints.zip(endStatesPhase1).map((bp, st) => geodes(7, st._1, st._2)(bp))
+println(endStatesPahse2.map(_._1.geodes).product)
