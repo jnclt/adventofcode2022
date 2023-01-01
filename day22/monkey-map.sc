@@ -10,7 +10,7 @@ enum Turn:
 
 case class Move(count: Int, turn: Turn)
 
-def get_moves(move_codes: String): List[Move] =
+def getMoves(move_codes: String): List[Move] =
   if move_codes.isEmpty then Nil
   else
     val (num, rest) = move_codes.span(_.isDigit)
@@ -18,49 +18,62 @@ def get_moves(move_codes: String): List[Move] =
       case ""                 => Turn.None
       case x if x.head == 'L' => Turn.Left
       case x if x.head == 'R' => Turn.Right
-    Move(num.toInt, turn) :: get_moves(rest.tail)
+    Move(num.toInt, turn) :: getMoves(rest.tail)
 
-val moves = get_moves(input.last)
+val moves = getMoves(input.last)
 
 enum Heading:
   case Right, Down, Left, Up
 
 case class Position(x: Int, y: Int, f: Heading)
+case class Wall(x: Int, y: Int)
+case class PositionCube(w: Wall, p: Position)
 
-def next1(from: Position): Position =
-  val next = from.f match
-    case Heading.Right => from.copy(x = (from.x + 1) % width)
-    case Heading.Down  => from.copy(y = (from.y + 1) % height)
-    case Heading.Left  => from.copy(x = (from.x + width - 1) % width)
-    case Heading.Up    => from.copy(y = (from.y + height - 1) % height)
-  rows(next.y)(next.x) match
-    case ' ' =>
-      next.f match
-        case Heading.Right => next.copy(x = rows(next.y).indexWhere(_ != ' '))
-        case Heading.Down  => next.copy(y = cols(next.x).indexWhere(_ != ' '))
-        case Heading.Left  => next.copy(x = rows(next.y).lastIndexWhere(_ != ' '))
-        case Heading.Up    => next.copy(y = cols(next.x).lastIndexWhere(_ != ' '))
-    case _ => next
+def turn(pos: PositionCube, turn: Turn): PositionCube =
+  val nextHeading = Heading.fromOrdinal((pos.p.f.ordinal + turn.ordinal) % 4)
+  pos.copy(p = pos.p.copy(f = nextHeading))
 
-def execute(next: Position => Position)(from: Position, move: Move): Position =
-  val nextHeading = Heading.fromOrdinal((from.f.ordinal + move.turn.ordinal) % 4)
-  if move.count == 0 then from.copy(f = nextHeading)
+def symbolAt(pos: PositionCube): Char =
+  val (x, y) = (pos.w.x * size, pos.w.y * size)
+  rows(y + pos.p.y)(x + pos.p.x)
+
+def execute(next: PositionCube => PositionCube)(from: PositionCube, move: Move): PositionCube =
+  if move.count == 0 then turn(from, move.turn)
   else
     val nxt = next(from)
-    if rows(nxt.y)(nxt.x) == '#' then from.copy(f = nextHeading)
+    if symbolAt(nxt) == '#' then turn(from, move.turn)
     else execute(next)(nxt, Move(move.count - 1, move.turn))
 
-def encode(pos: Position): Int =
-  ((pos.y + 1) * 1000) + ((pos.x + 1) * 4) + pos.f.ordinal
+def next1(from: PositionCube): PositionCube =
+  def next(from: Position): Position =
+    val next = from.f match
+      case Heading.Right => from.copy(x = (from.x + 1) % width)
+      case Heading.Down  => from.copy(y = (from.y + 1) % height)
+      case Heading.Left  => from.copy(x = (from.x + width - 1) % width)
+      case Heading.Up    => from.copy(y = (from.y + height - 1) % height)
+    rows(next.y)(next.x) match
+      case ' ' =>
+        next.f match
+          case Heading.Right => next.copy(x = rows(next.y).indexWhere(_ != ' '))
+          case Heading.Down  => next.copy(y = cols(next.x).indexWhere(_ != ' '))
+          case Heading.Left  => next.copy(x = rows(next.y).lastIndexWhere(_ != ' '))
+          case Heading.Up    => next.copy(y = cols(next.x).lastIndexWhere(_ != ' '))
+      case _ => next
+
+  from.copy(p = next(from.p))
+
+def encode(pos: PositionCube): Int =
+  val (wx, wy) = (pos.w.x * size, pos.w.y * size)
+  val pos2D = Position(wx + pos.p.x, wy + pos.p.y, pos.p.f)
+  ((pos2D.y + 1) * 1000) + ((pos2D.x + 1) * 4) + pos2D.f.ordinal
 
 val start = Position(rows(0).indexOf('.'), 0, Heading.Right)
-val end = moves.foldLeft(start)(execute(next1))
-println(encode(end))
+val start1 = PositionCube(Wall(0, 0), start)
+val end1 = moves.foldLeft(start1)(execute(next1))
+println(encode(end1))
 
 // part 2
 val size = 50
-
-case class Wall(x: Int, y: Int)
 
 // hardcoded for input.txt
 // 012
@@ -107,23 +120,6 @@ val walls = Map(
   )
 )
 
-case class PositionCube(w: Wall, p: Position)
-
-def turn(pos: PositionCube, turn: Turn): PositionCube =
-  val nextHeading = Heading.fromOrdinal((pos.p.f.ordinal + turn.ordinal) % 4)
-  pos.copy(p = pos.p.copy(f = nextHeading))
-
-def symbolAt(pos: PositionCube): Char =
-  val (x, y) = (pos.w.x * size, pos.w.y * size)
-  rows(y + pos.p.y)(x + pos.p.x)
-
-def execute2(next: PositionCube => PositionCube)(from: PositionCube, move: Move): PositionCube =
-  if move.count == 0 then turn(from, move.turn)
-  else
-    val nxt = next(from)
-    if symbolAt(nxt) == '#' then turn(from, move.turn)
-    else execute2(next)(nxt, Move(move.count - 1, move.turn))
-
 def opposite(facing: Heading): Heading =
   Heading.fromOrdinal((facing.ordinal + 2) % 4)
 
@@ -166,11 +162,6 @@ def next2(from: PositionCube): PositionCube =
           PositionCube(Wall(trans.x, trans.y), edgePosition(i, trans.f))
         case y => from.copy(p = from.p.copy(y = y))
 
-def encode2(pos: PositionCube): Int =
-  val (wx, wy) = (pos.w.x * size, pos.w.y * size)
-  val pos2D = Position(wx + pos.p.x, wy + pos.p.y, pos.p.f)
-  encode(pos2D)
-
 val start2 = PositionCube(Wall(start.x / size, 0), Position(0, 0, Heading.Right))
-val end2 = moves.foldLeft(start2)(execute2(next2))
-println(encode2(end2))
+val end2 = moves.foldLeft(start2)(execute(next2))
+println(encode(end2))
