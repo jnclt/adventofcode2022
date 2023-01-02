@@ -2,23 +2,18 @@ val lines = io.Source.fromFile("input.txt").getLines.toList
 val height = lines.size - 2
 val width = lines.head.size - 2
 
-case class Blizzard(idx: Byte, step: Byte):
-  def idxInTime(time: Int, span: Int): Int =
-    val offset = (idx + step * time) % span
-    if offset < 0 then offset + span else offset
-
-def parse(line: String): Vector[Blizzard] =
+def parse(line: String): Set[(Int, Int)] =
   line
     .drop(1)
     .dropRight(1)
     .zipWithIndex
     .flatMap((c, i) =>
       c match
-        case '>' => Some(Blizzard(i.toByte, 1.toByte))
-        case '<' => Some(Blizzard(i.toByte, -1.toByte))
+        case '>' => Some((i, 1))
+        case '<' => Some((i, -1))
         case _   => None
     )
-    .toVector
+    .toSet
 
 val horizontal = lines.drop(1).dropRight(1).map(parse).toVector
 val vertical = lines.transpose
@@ -36,37 +31,39 @@ val vertical = lines.transpose
   .map(parse)
   .toVector
 
-def isFree(pos: (Int, Int), time: Int): Boolean =
-  val (x, y) = pos
-  horizontal(y).forall(_.idxInTime(time, width) != x) &&
-  vertical(x).forall(_.idxInTime(time, height) != y)
+def isFree(pos: ((Int, Int), Int)): Boolean =
+  val ((x, y), time) = pos
+  !(horizontal(y).contains(((x + width - (time % width)) % width, 1)) ||
+    horizontal(y).contains(((x + (time % width)) % width, -1)) ||
+    vertical(x).contains(((y + height - (time % height)) % height, 1)) ||
+    vertical(x).contains(((y + (time % height)) % height, -1)))
 
-val end = (width - 1, height - 1)
-
-def traverse(): Unit =
-  var time = 1
-  val toVisit = collection.mutable.Queue(Set((0, 0)))
+def traverse(from: (Int, Int), to: (Int, Int), at: Int): Int =
+  var startTime = at
+  while !isFree(from, startTime) do startTime += 1
+  val toVisit = collection.mutable.Queue((from, startTime))
   while !toVisit.isEmpty do
-    time += 1
-    val batch = toVisit.dequeue()
-    print(s"$time:${batch.size},")
-    val newBatch = batch.flatMap(pos =>
-      if pos == end then
-        println(time)
-        System.exit(0)
-        toVisit.clear
-        List()
-      else
-        val (x, y) = pos
-        val candidates = List(
-          if x < width - 1 then Some(x + 1, y) else None,
-          if y < height - 1 then Some(x, y + 1) else None,
-          if x > 0 then Some(x - 1, y) else None,
-          if y > 0 then Some(x, y - 1) else None,
-          Some(pos)
-        ).flatten.filter(isFree(_, time))
-        candidates
-    )
-    toVisit.enqueue(newBatch)
+    val (pos, ts) = toVisit.dequeue()
+    if pos == to then
+      return ts + 1
+      toVisit.clear()
+    else
+      val time = ts + 1
+      val (x, y) = pos
+      val candidates = List(
+        if x < width - 1 then Some((x + 1, y), time) else None,
+        if y < height - 1 then Some((x, y + 1), time) else None,
+        if x > 0 then Some((x - 1, y), time) else None,
+        if y > 0 then Some((x, y - 1), time) else None,
+        Some((pos), time)
+      ).flatten.filter(isFree(_)).filterNot(c => toVisit.contains(c))
+      toVisit.enqueueAll(candidates)
+  return -1
 
-println(traverse())
+val start = (0, 0)
+val end = (width - 1, height - 1)
+val there = (traverse(start, end, 0))
+println(there)
+val back = traverse(end, start, there)
+val thereAgain = (traverse(start, end, back))
+println(thereAgain)
