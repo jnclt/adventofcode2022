@@ -18,7 +18,6 @@ case class Monkey(
 def parse(lines: Iterator[String]): Monkey =
   lines.drop(1) // "Monkey X"
   val items = Queue(lines.next.split(": ").last.split(", ").map(i => BigInt(i))*)
-  // val items = Queue(lines.next.split(": ").last.split(", ").map(_.toInt)*)
   val cmd = lines.next.split("= ").last.split(" ")
   val div = lines.next.split("divisible by ").last.toInt
   val next = (lines.next.last.toString.toInt, lines.next.last.toString.toInt)
